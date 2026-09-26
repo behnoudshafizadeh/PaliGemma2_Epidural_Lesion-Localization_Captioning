@@ -1,7 +1,7 @@
 """
 make_result_figures.py -- turn the raw evaluation outputs into SHAREABLE results (no patient images, no real identifiers):
   * charts (detection IoU by prompt type, per-fact caption accuracy vs baseline, confusion matrices, training curves)
-  * box drawings on a SCHEMATIC head outline (not a scan): ground-truth box (green) vs model box (red) with the prompt
+  * box drawings on a SYNTHETIC CT-like slice (procedurally drawn, not a scan): ground-truth box (green) vs model box (red) with the prompt
   * anonymised text tables: generated vs ground-truth captions (patients -> P01.., lesions -> case_001..)
 
 Inputs (all produced by the evaluation scripts of this repo):
@@ -71,11 +71,35 @@ def anonymise_text(text, patients):
     return text, mp
 
 
-def head_canvas(ax):
+def synth_ct_slice(gt, seed, n=512):
+    """A SYNTHETIC CT-like brain slice (skull ring, scalp, brain texture, ventricles, falx, one bright lesion inscribed in the
+    ground-truth box `gt` = [x1,y1,x2,y2] normalised). Procedurally generated: NOT a patient image and NOT derived from one."""
+    import cv2
+    rng = np.random.default_rng(seed)
+    yy, xx = np.mgrid[0:n, 0:n] / n
+    ell = lambda cx, cy, a, b: ((xx - cx) / a) ** 2 + ((yy - cy) / b) ** 2
+    img = np.zeros((n, n), np.float32)
+    img[ell(0.5, 0.52, 0.335, 0.415) <= 1] = 95                      # scalp / soft tissue
+    img[ell(0.5, 0.52, 0.315, 0.395) <= 1] = 245                     # skull (bone)
+    brain = ell(0.5, 0.52, 0.29, 0.37) <= 1
+    tex = cv2.GaussianBlur(rng.normal(0, 1, (n, n)).astype(np.float32), (0, 0), 5)
+    img[brain] = 112 + 9 * tex[brain] / (tex.std() + 1e-6)
+    for cx in (0.455, 0.545):                                       # lateral ventricles
+        v = ell(cx, 0.47, 0.035, 0.085) <= 1
+        img[v] = 52
+    img[(np.abs(xx - 0.5) < 0.004) & brain & (yy < 0.38)] = 150       # falx
+    x1, y1, x2, y2 = gt
+    les = ell((x1 + x2) / 2, (y1 + y2) / 2, max((x2 - x1) / 2, 0.006), max((y2 - y1) / 2, 0.006)) <= 1
+    les = cv2.GaussianBlur(les.astype(np.float32), (0, 0), 1.2)
+    blob = 200 + 14 * cv2.GaussianBlur(rng.normal(0, 1, (n, n)).astype(np.float32), (0, 0), 2) / 0.3
+    img = img * (1 - les) + np.clip(blob, 170, 235) * les
+    img += rng.normal(0, 3, (n, n))
+    return np.clip(cv2.GaussianBlur(img, (0, 0), 0.8), 0, 255).astype(np.uint8)
+
+
+def head_canvas(ax, gt=None, seed=0):
     ax.set_xlim(0, 1); ax.set_ylim(1, 0); ax.set_aspect("equal"); ax.axis("off")
-    ax.add_patch(Rectangle((0, 0), 1, 1, color="#1b1b1b"))
-    ax.add_patch(Ellipse((0.5, 0.52), 0.62, 0.78, fill=False, ec="#777", lw=2))
-    ax.add_patch(Ellipse((0.5, 0.52), 0.55, 0.71, fill=False, ec="#444", lw=1))
+    ax.imshow(synth_ct_slice(gt if gt else [0, 0, 0, 0], seed), cmap="gray", vmin=0, vmax=255, extent=(0, 1, 1, 0), interpolation="bilinear")
 
 
 # ------------------------------------------------------------------------------ detection
@@ -117,15 +141,16 @@ def detection(a, out):
     fig, axs = plt.subplots(len(pick), 3, figsize=(10.5, 3.9 * len(pick)))
     for k, i in enumerate(pick):
         for j, c in enumerate(("matched", "baseline", "mismatched")):
-            ax = axs[k][j]; head_canvas(ax)
+            ax = axs[k][j]
             g, p = boxes(by[c][i]["gt"]), boxes(by[c][i]["pred"])
+            head_canvas(ax, g, seed=k)
             ax.add_patch(Rectangle((g[0], g[1]), g[2] - g[0], g[3] - g[1], fill=False, ec="#00e000", lw=2))
             if p:
                 ax.add_patch(Rectangle((p[0], p[1]), p[2] - p[0], p[3] - p[1], fill=False, ec="#ff4040", lw=2))
             u = iou(g, p) if p else 0.0
             ax.set_title(f"case {k + 1} - {names[c]} - IoU {u:.2f}", fontsize=9)
             ax.text(0.5, -0.02, "\n".join(re.findall(r".{1,52}(?:\s|$)", by[c][i]["prompt"])), transform=ax.transAxes, va="top", ha="center", fontsize=7, color="#222")
-    fig.suptitle("Ground truth (green) vs model (red) on a SCHEMATIC head outline - not patient data", y=0.995, fontsize=10)
+    fig.suptitle("Ground truth (green) vs model (red). Background = SYNTHETIC CT-like slice drawn for illustration (not a patient image);\nthe boxes are the real ground-truth and model boxes of held-out test cases", y=0.997, fontsize=9.5)
     fig.tight_layout(rect=(0, 0, 1, 0.985)); fig.savefig(out / "detection_boxes_by_prompt.png", dpi=110); plt.close(fig)
     # ---- validation curve
     if a.det_metrics:
