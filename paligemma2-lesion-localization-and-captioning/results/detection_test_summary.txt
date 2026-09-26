@@ -1,0 +1,54 @@
+PROMPT EVALUATION on the TEST split (1138 rows = image+lesion pairs)
+
+[matched]  n=1138  mean IoU 0.614  median 0.702  IoU>=0.5  75.1%  IoU>=0.3  84.6%  miss(0)  8.7%
+    boxes per answer: mean 1.00 (target 1); answers with no box: 4
+    mAP50 all boxes 0.599 | first box only 0.599    mAP50:95 all 0.256 | first only 0.256
+[baseline]  n=1138  mean IoU 0.576  median 0.680  IoU>=0.5  69.8%  IoU>=0.3  80.8%  miss(0) 13.9%
+    boxes per answer: mean 0.99 (target 1); answers with no box: 9
+    mAP50 all boxes 0.537 | first box only 0.537    mAP50:95 all 0.229 | first only 0.229
+[mismatched]  n=1138  mean IoU 0.489  median 0.569  IoU>=0.5  56.5%  IoU>=0.3  71.4%  miss(0) 17.1%
+    boxes per answer: mean 0.98 (target 1); answers with no box: 19
+    mAP50 all boxes 0.352 | first box only 0.352    mAP50:95 all 0.138 | first only 0.138
+
+[prior_box  (NO model, NO image: mean TRAIN box for the prompt's size/shape/region)]
+    n=1138  mean IoU 0.097  median 0.033  IoU>=0.5   0.7%  IoU>=0.3   9.8%  miss(0) 43.1%
+
+== How much does the model add beyond the prompt alone? ==
+matched model mean IoU 0.614  vs  prior_box 0.097   (model better on 91.0% of rows, worse on 4.9%)
+hint helps: matched 0.614 vs baseline(no hint) 0.576; matched > baseline on 50.8% of rows, < on 29.5%
+
+== Does the model obey the prompt or look at the image? (mismatched = deliberately wrong hint) ==
+predicted region = the WRONG prompt's region: 5.3%  | = the image's true region: 76.7%  (n=1119)
+predicted size   = the WRONG prompt's size:   36.0%  | = the image's true size:   53.8%
+  (mostly 'true region' => the model reads the image; mostly 'prompt region' => it obeys the hint)
+
+== matched vs baseline by lesion size / shape (mean IoU) ==
+  size=small    n=374  matched 0.421  baseline 0.376   prior_box 0.042
+  size=medium   n=522  matched 0.721  baseline 0.703   prior_box 0.112
+  size=large    n=242  matched 0.678  baseline 0.610   prior_box 0.151
+  shape=wide     n=204  matched 0.628  baseline 0.525   prior_box 0.114
+  shape=compact  n=313  matched 0.515  baseline 0.479   prior_box 0.074
+  shape=tall     n=621  matched 0.658  baseline 0.641   prior_box 0.104
+
+== prompt combination seen in training vs never seen (size+shape+region sentence) ==
+  SEEN in training    n=907   mean IoU: matched 0.612  baseline 0.582  mismatched 0.507   prior_box 0.094   matched IoU>=0.5: 76.1%
+  NEVER seen in train n=231   mean IoU: matched 0.621  baseline 0.552  mismatched 0.421   prior_box 0.111   matched IoU>=0.5: 71.4%
+
+== per patient (matched mean IoU) ==
+   P02: n=68   mean IoU 0.702  IoU>=0.5 91%
+   P03: n=32   mean IoU 0.791  IoU>=0.5 100%
+   P04: n=140  mean IoU 0.707  IoU>=0.5 92%
+   P05: n=65   mean IoU 0.232  IoU>=0.5 20%
+   P06: n=15   mean IoU 0.001  IoU>=0.5 0%
+   P07: n=100  mean IoU 0.704  IoU>=0.5 86%
+   P08: n=40   mean IoU 0.391  IoU>=0.5 38%
+   P09: n=28   mean IoU 0.600  IoU>=0.5 79%
+    P01: n=146  mean IoU 0.612  IoU>=0.5 66%
+   P10: n=129  mean IoU 0.816  IoU>=0.5 98%
+   P11: n=45   mean IoU 0.334  IoU>=0.5 38%
+   P12: n=12   mean IoU 0.025  IoU>=0.5 0%
+   P13: n=34   mean IoU 0.389  IoU>=0.5 41%
+   P14: n=99   mean IoU 0.472  IoU>=0.5 64%
+   P15: n=3    mean IoU 0.651  IoU>=0.5 100%
+   P16: n=79   mean IoU 0.756  IoU>=0.5 94%
+   P17: n=103  mean IoU 0.744  IoU>=0.5 98%

@@ -1,0 +1,31 @@
+# Captioning bundle: "learn each fact separately" (see caption_bundle.py). Same proven memory setup as config.yaml.
+#   - every training draw asks about a RANDOM SUBSET of the 5 facts (25% generic "describe everything" prompt)
+#   - flips / 90-degree rotations / small rotations / intensity jitter, facts re-measured after each augmentation
+#   - patient-balanced resample of the training lesions (build_bundle_dataset.py)
+variant: lesion_bundle
+bundle: true
+p_generic: 0.25
+augment: true
+
+model_id: google/paligemma2-3b-pt-448
+optimization_strategy: lora
+lora_dropout: 0.1
+gradient_checkpointing: true
+
+epochs: 15
+lr: 1.0e-4
+lr_schedule: cosine
+warmup_steps: 100
+batch_size: 1
+accumulate_grad_batches: 8
+seed: 42
+
+# validation = generic prompt, full five-fact caption, every val_stride-th validation lesion
+# (NOTE: the validation split has no horizontal-direction lesion at all; the test split does -- see evaluate_captioning.py)
+val_every: 1
+val_stride: 4
+max_new_tokens: 96
+snapshot_every: 3
+num_workers: 2
+val_num_workers: 1
+output_dir: training/checkpoints

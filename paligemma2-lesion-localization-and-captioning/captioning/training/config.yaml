@@ -1,0 +1,39 @@
+# Captioning fine-tune settings (read by train_paligemma_captioning.py; any value can be overridden on the command line).
+# Same proven memory setup as the detection model: LoRA rank 8, bf16, gradient checkpointing,
+# batch 1 x accumulate 8 per GPU (effective batch 16 on 2 GPUs).
+
+# --- experiment: which crop is the model input (spec section 29) ---------------------------------------------
+#   exact         tight box crop                                  (Experiment 1)
+#   padded        box + 20% context                               (Experiment 2)
+#   highlighted   padded crop, everything outside the lesion dimmed  (Experiment 3)
+#   fixed_window  256 px window around the lesion, NOT rescaled: lesion size stays visible (extra experiment)
+variant: padded
+
+# --- model / LoRA -----------------------------------------------------------------------------------------
+model_id: google/paligemma2-3b-pt-448
+optimization_strategy: lora          # lora | qlora | freeze | none  (rank 8 / alpha 16 are maestro's fixed values)
+lora_dropout: 0.1
+gradient_checkpointing: true
+
+# --- optimisation -----------------------------------------------------------------------------------------
+epochs: 15
+lr: 1.0e-4
+lr_schedule: cosine                  # constant | cosine
+warmup_steps: 100
+batch_size: 1
+accumulate_grad_batches: 8
+seed: 42
+
+# --- validation / checkpoints -----------------------------------------------------------------------------
+# Validation generates ~40 tokens per sample (slow), so it uses every `val_stride`-th validation lesion
+# (~107 of 426, spread over all validation patients) each `val_every` epochs; the FULL validation and test sets
+# are evaluated by evaluate_captioning.py.
+val_every: 1
+val_stride: 4
+max_new_tokens: 96                   # bounds validation generation; captions are ~30-50 tokens
+snapshot_every: 3                    # permanent adapter snapshot every N epochs (checkpoints/epoch_XXX)
+num_workers: 2
+val_num_workers: 1
+
+# --- paths (relative to the captioning project) -----------------------------------------------------------
+output_dir: training/checkpoints

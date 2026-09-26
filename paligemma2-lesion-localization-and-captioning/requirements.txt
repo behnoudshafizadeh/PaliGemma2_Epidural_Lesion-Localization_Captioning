@@ -1,0 +1,13 @@
+# tested versions (Python 3.11, CUDA 12.1)
+torch==2.5.1
+transformers==4.47.1
+peft==0.20.0
+lightning==2.6.6
+maestro==1.0.0            # Roboflow "maestro" PaliGemma 2 trainer, used as a library
+supervision==0.25.1       # <loc> token parsing and mAP
+numpy==2.2.6
+scipy==1.13.1
+opencv-python-headless>=4.9
+pillow==10.4.0
+pyyaml==6.0.3
+matplotlib==3.9.4

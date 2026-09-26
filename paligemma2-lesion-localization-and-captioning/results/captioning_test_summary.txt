@@ -1,0 +1,87 @@
+CAPTION EVALUATION on the TEST split: 1162 lesions, 17 patients
+
+[generic]  prompt: "Describe the visible characteristics of this epidural hemorrhage."
+   fact         accuracy   95% CI (patients)  balanced  majority-class baseline  chance  stated  within 1 level err
+   shape           96.9%        [95.4, 98.1]     96.6%            28.7% (     mid)   33.3%  100.0%    100.0%      0.03
+   orientation     97.8%        [95.7, 99.7]     81.7%            45.9% (vertical)   25.0%  100.0%    100.0%      0.01
+   outline         87.8%        [83.3, 91.5]     85.6%            53.5% (     mid)   33.3%  100.0%    100.0%      0.12
+   intensity       96.0%        [93.5, 98.1]     96.1%            44.6% (     mid)   33.3%  100.0%    100.0%      0.04
+   variation       90.6%        [88.3, 92.5]     90.8%            35.9% (     mid)   33.3%  100.0%    100.0%      0.09
+   text similarity vs composed reference caption: ROUGE-L 0.987   BLEU-4 0.965   all five facts right at once: 71.9%
+   label combination SEEN in training: n=1147, mean per-fact accuracy 93.9%
+   label combination NEVER seen in training: n=15, mean per-fact accuracy 88.0%
+
+[explicit_full]  prompt: "Describe the shape, main-axis direction, outline regularity, overall intensity and internal intensity variation of this epidural hemorrhage."
+   fact         accuracy   95% CI (patients)  balanced  majority-class baseline  chance  stated  within 1 level err
+   shape           96.8%        [95.6, 98.1]     96.4%            28.7% (     mid)   33.3%  100.0%    100.0%      0.03
+   orientation     98.0%        [96.0, 99.5]     85.8%            45.9% (vertical)   25.0%  100.0%    100.0%      0.00
+   outline         87.0%        [83.1, 90.9]     85.4%            53.5% (     mid)   33.3%  100.0%    100.0%      0.13
+   intensity       96.4%        [94.1, 98.4]     96.6%            44.6% (     mid)   33.3%  100.0%    100.0%      0.04
+   variation       89.9%        [88.1, 91.8]     90.0%            35.9% (     mid)   33.3%  100.0%    100.0%      0.10
+
+[single_shape]  prompt: "Describe the shape of this epidural hemorrhage."
+   fact         accuracy   95% CI (patients)  balanced  majority-class baseline  chance  stated  within 1 level err
+   shape           96.6%        [94.8, 97.9]     96.3%            28.7% (     mid)   33.3%  100.0%    100.0%      0.03
+
+[single_orientation]  prompt: "Describe the main-axis direction of this epidural hemorrhage."
+   fact         accuracy   95% CI (patients)  balanced  majority-class baseline  chance  stated  within 1 level err
+   orientation     97.1%        [94.2, 99.5]     80.1%            45.9% (vertical)   25.0%  100.0%    100.0%      0.01
+
+[single_outline]  prompt: "Describe the outline regularity of this epidural hemorrhage."
+   fact         accuracy   95% CI (patients)  balanced  majority-class baseline  chance  stated  within 1 level err
+   outline         88.2%        [83.9, 91.6]     85.9%            53.5% (     mid)   33.3%  100.0%    100.0%      0.12
+
+[single_intensity]  prompt: "Describe the overall intensity of this epidural hemorrhage."
+   fact         accuracy   95% CI (patients)  balanced  majority-class baseline  chance  stated  within 1 level err
+   intensity       96.2%        [93.5, 98.0]     96.4%            44.6% (     mid)   33.3%  100.0%    100.0%      0.04
+
+[single_variation]  prompt: "Describe the internal intensity variation of this epidural hemorrhage."
+   fact         accuracy   95% CI (patients)  balanced  majority-class baseline  chance  stated  within 1 level err
+   variation       89.2%        [86.8, 91.8]     89.4%            35.9% (     mid)   33.3%  100.0%    100.0%      0.11
+
+== confusion (rows = true, columns = answered) for the single-fact prompts ==
+  shape (single_shape):
+                      high         low         mid none stated
+          high         340           0          10           0
+           low           0         472           7           0
+           mid          12          11         310           0
+  orientation (single_orientation):
+                  diagonal  horizontal        none    vertical none stated
+      diagonal         416           0           0           3           0
+    horizontal           6         176           0           0           0
+          none           3          18           7           0           0
+      vertical           4           0           0         529           0
+  outline (single_outline):
+                      high         low         mid none stated
+          high         321           0          31           0
+           low           0         144          44           0
+           mid          36          26         560           0
+  intensity (single_intensity):
+                      high         low         mid none stated
+          high         267           0          10           0
+           low           0         359           8           0
+           mid           1          25         492           0
+  variation (single_variation):
+                      high         low         mid none stated
+          high         369           0          22           0
+           low           0         321          33           0
+           mid          45          25         347           0
+
+== per patient (generic prompt, mean accuracy over the five facts) ==
+   P02: n=  68   94.1%
+   P03: n=  32   93.8%
+   P04: n= 140   92.6%
+   P05: n=  65   92.3%
+   P06: n=  15   88.0%
+   P07: n= 124   97.1%
+   P08: n=  40   97.0%
+   P09: n=  28   89.3%
+    P01: n= 146   94.4%
+   P10: n= 129   94.7%
+   P11: n=  45   90.2%
+   P12: n=  12   98.3%
+   P13: n=  34   92.9%
+   P14: n=  99   93.3%
+   P15: n=   3  100.0%
+   P16: n=  79   92.2%
+   P17: n= 103   94.2%
