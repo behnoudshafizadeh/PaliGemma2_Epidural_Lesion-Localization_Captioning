@@ -1,7 +1,7 @@
 """
 make_result_figures.py -- turn the raw evaluation outputs into SHAREABLE results (no patient images, no real identifiers):
   * charts (detection IoU by prompt type, per-fact caption accuracy vs baseline, confusion matrices, training curves)
-  * box drawings on a SYNTHETIC CT-like slice (procedurally drawn, not a scan): ground-truth box (green) vs model box (red) with the prompt
+  * box drawings on de-identified held-out test slices (--det_images_dir; without it a SYNTHETIC CT-like slice is drawn instead): ground-truth box (green) vs model box (red) with the prompt
   * anonymised text tables: generated vs ground-truth captions (patients -> P01.., lesions -> case_001..)
 
 Inputs (all produced by the evaluation scripts of this repo):
@@ -97,8 +97,12 @@ def synth_ct_slice(gt, seed, n=512):
     return np.clip(cv2.GaussianBlur(img, (0, 0), 0.8), 0, 255).astype(np.uint8)
 
 
-def head_canvas(ax, gt=None, seed=0):
+def head_canvas(ax, gt=None, seed=0, real=None):
     ax.set_xlim(0, 1); ax.set_ylim(1, 0); ax.set_aspect("equal"); ax.axis("off")
+    if real is not None:                # real held-out slice: pixels only (grey), the file name is never shown or stored
+        from PIL import Image as _I
+        ax.imshow(np.asarray(_I.open(real).convert("L")), cmap="gray", vmin=0, vmax=255, extent=(0, 1, 1, 0), interpolation="bilinear")
+        return
     ax.imshow(synth_ct_slice(gt if gt else [0, 0, 0, 0], seed), cmap="gray", vmin=0, vmax=255, extent=(0, 1, 1, 0), interpolation="bilinear")
 
 
@@ -137,20 +141,43 @@ def detection(a, out):
     # ---- schematic box drawings, 6 random cases x 3 prompts
     rows = sorted(set(by["matched"]) & set(by["baseline"]) & set(by["mismatched"]))
     rnd = random.Random(3); rnd.shuffle(rows)
-    pick = rows[:6]
+    cand, seen_pat = [], set()
+    for i in rows:                       # one slice per patient
+        pat = by["matched"][i]["image"].split("_")[0]
+        if pat in seen_pat:
+            continue
+        if a.det_images_dir:             # real slices: square, brain-level only (no skull-base / face slices)
+            from PIL import Image as _I
+            im_ = _I.open(Path(a.det_images_dir) / by["matched"][i]["image"]).convert("L")
+            if im_.size[0] != im_.size[1]:
+                continue
+            c_ = np.asarray(im_)[int(.3 * im_.size[1]):int(.7 * im_.size[1]), int(.3 * im_.size[0]):int(.7 * im_.size[0])]
+            if np.mean((c_ >= 60) & (c_ <= 170)) < 0.55:
+                continue
+            L_ = np.asarray(im_)[int(.55 * im_.size[1]):int(.85 * im_.size[1]), int(.35 * im_.size[0]):int(.65 * im_.size[0])]
+            if np.mean(L_ >= 230) > 0.03:        # bone in the lower-central area = skull-base / orbit level -> skip
+                continue
+        seen_pat.add(pat); cand.append(i)
+    def m_iou(i):
+        g, p_ = boxes(by["matched"][i]["gt"]), boxes(by["matched"][i]["pred"])
+        return iou(g, p_) if g and p_ else 0.0
+    # 2 good (IoU>=0.7), 2 medium (0.4-0.7), 2 poor (<0.4) with the correct hint -> not cherry-picked
+    bins = [[i for i in cand if m_iou(i) >= 0.7], [i for i in cand if 0.4 <= m_iou(i) < 0.7], [i for i in cand if m_iou(i) < 0.4]]
+    pick = [i for b_ in bins for i in b_[:2]] if a.det_images_dir else cand[:6]
     fig, axs = plt.subplots(len(pick), 3, figsize=(10.5, 3.9 * len(pick)))
     for k, i in enumerate(pick):
         for j, c in enumerate(("matched", "baseline", "mismatched")):
             ax = axs[k][j]
             g, p = boxes(by[c][i]["gt"]), boxes(by[c][i]["pred"])
-            head_canvas(ax, g, seed=k)
+            head_canvas(ax, g, seed=k, real=(Path(a.det_images_dir) / by[c][i]["image"]) if a.det_images_dir else None)
             ax.add_patch(Rectangle((g[0], g[1]), g[2] - g[0], g[3] - g[1], fill=False, ec="#00e000", lw=2))
             if p:
                 ax.add_patch(Rectangle((p[0], p[1]), p[2] - p[0], p[3] - p[1], fill=False, ec="#ff4040", lw=2))
             u = iou(g, p) if p else 0.0
             ax.set_title(f"case {k + 1} - {names[c]} - IoU {u:.2f}", fontsize=9)
             ax.text(0.5, -0.02, "\n".join(re.findall(r".{1,52}(?:\s|$)", by[c][i]["prompt"])), transform=ax.transAxes, va="top", ha="center", fontsize=7, color="#222")
-    fig.suptitle("Ground truth (green) vs model (red). Background = SYNTHETIC CT-like slice drawn for illustration (not a patient image);\nthe boxes are the real ground-truth and model boxes of held-out test cases", y=0.997, fontsize=9.5)
+    fig.suptitle(("Ground truth (green) vs model (red) on held-out test slices: 2 good, 2 medium, 2 poor results (de-identified: pixels only)" if a.det_images_dir else
+                  "Ground truth (green) vs model (red). Background = SYNTHETIC CT-like slice (not a patient image);\nthe boxes are the real ground-truth and model boxes of held-out test cases"), y=0.997, fontsize=9.5)
     fig.tight_layout(rect=(0, 0, 1, 0.985)); fig.savefig(out / "detection_boxes_by_prompt.png", dpi=110); plt.close(fig)
     # ---- validation curve
     if a.det_metrics:
@@ -233,6 +260,7 @@ def captioning(a, out):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--det_jsonl"); ap.add_argument("--det_summary"); ap.add_argument("--det_metrics")
+    ap.add_argument("--det_images_dir", default=None, help="folder with the test slices (by file name): draw the boxes on the REAL slices instead of a synthetic one")
     ap.add_argument("--cap_jsonl"); ap.add_argument("--cap_summary"); ap.add_argument("--cap_metrics")
     ap.add_argument("--out", default=str(REPO / "results"))
     a = ap.parse_args()

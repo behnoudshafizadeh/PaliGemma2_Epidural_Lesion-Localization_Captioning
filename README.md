@@ -11,8 +11,9 @@ Both fine-tune [`google/paligemma2-3b-pt-448`](https://huggingface.co/google/pal
 
 > **This is a research/engineering project, not a medical device.** Captions are objective *visual measurements* of the lesion
 > (elongation, direction, outline regularity, brightness, texture variation), not diagnoses or clinical findings.
-> **No patient data, images or model weights are included in this repository** (see [Data](#data)); all pictures below are charts,
-> box drawings on a synthetic CT-like slice, or synthetic shapes.
+> **No dataset and no model weights are included in this repository** (see [Data](#data)). The only patient-derived pixels are the
+> six de-identified held-out test slices in `results/detection_boxes_by_prompt.png` (pixels only; no names, identifiers or metadata),
+> shown to illustrate the box outputs; all other pictures are charts or synthetic shapes.
 
 ## Results (held-out test patients)
 
@@ -35,7 +36,7 @@ The model is trained with prompts that describe the lesion's size / shape / regi
 
 ![IoU by prompt](results/detection_iou_by_prompt.png)
 ![boxes](results/detection_boxes_by_prompt.png)
-*The background is a **synthetic** CT-like slice drawn for illustration (not a patient image, not derived from one); the green and red boxes are the real ground-truth and model boxes of held-out test cases.*
+*Six held-out test slices, one per patient, de-identified (pixels only, no names or metadata), chosen by result quality: 2 good, 2 medium, 2 poor (IoU with the correct hint ≥ 0.7, 0.4–0.7, < 0.4), restricted to brain-level slices. Green = ground truth, red = model.*
 
 Validation mAP peaked around epoch 9–10 and then slowly declined (over-fitting), so the epoch-10 snapshot (best on *validation*) was used for the test:
 ![validation curve](results/detection_validation_curve.png)
@@ -74,7 +75,7 @@ captioning/   image -> caption:  build_captioning_dataset.py  build_lesion_only_
 common/       shared training code: resume/checkpoint callbacks, warm-up+cosine schedule, LoRA-dropout patch, augmentation, mAP metric
 scripts/      run_detection.sh, run_captioning.sh (convenience wrappers), make_result_figures.py (private outputs -> shareable results)
 tests/        test_no_data.py (synthetic, CPU only)
-results/      charts, box drawings on a synthetic CT-like slice, anonymised summaries
+results/      charts, box drawings on six de-identified test slices, anonymised summaries
 docs/         data_format.md, detection.md, captioning.md
 ```
 
@@ -122,7 +123,7 @@ python training/compare_captions.py --split test          # generated vs ground-
 Small data (79 patients, near-duplicate consecutive slices → wide patient-level confidence intervals); the detection hint is an oracle; the caption labels are threshold-based (terciles fitted on the training set) so errors concentrate at level boundaries; no clinical validation; PNG grey values are not Hounsfield units and directions are image directions, not anatomical.
 
 ## Data
-Not included and not redistributable. The code expects COCO annotations, PNG slices and (for captioning) binary lesion masks; see [docs/data_format.md](docs/data_format.md). Model weights are not published either.
+The dataset is not included and not redistributable (apart from the six de-identified slices above). The code expects COCO annotations, PNG slices and (for captioning) binary lesion masks; see [docs/data_format.md](docs/data_format.md). Model weights are not published either.
 
 ## License
 The code in this repository is released under the [MIT License](LICENSE). The MIT licence covers this repository's code only:
